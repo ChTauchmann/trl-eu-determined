@@ -1,0 +1,75 @@
+name: eu-sft-8gpu
+description: European SFT training - 8 GPU production run with FSDP
+
+resources:
+  slots_per_trial: 8
+
+environment:
+  image: determinedai/pytorch-cuda:latest
+  environment_variables:
+    - HF_HOME=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface
+    - TRANSFORMERS_CACHE=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface/transformers
+    - HF_DATASETS_CACHE=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface/datasets
+    - WANDB_PROJECT=eu-sft
+    - NCCL_DEBUG=INFO
+
+# Bind mounts for accessing shared storage
+bind_mounts:
+  - host_path: /pfss
+    container_path: /pfss
+    read_only: false
+
+entrypoint:
+  - python
+  - scripts/determined/train_determined.py
+
+hyperparameters:
+  # Model
+  model_name_or_path: swiss-ai/Apertus-8B-Instruct-2509
+
+  # Data - set one of these
+  pretokenized_path: null
+  dataset_path: /pfss/mlde/workspaces/mlde_wsp_HessianLLM/datasets/dolci_7b_sft/de.jsonl
+  max_samples: null
+
+  # Language
+  language: de
+
+  # Training
+  output_dir: /pfss/mlde/workspaces/mlde_wsp_HessianLLM/tauchmann/repos/trl-eu/outputs/apertus-8b-eu
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 2
+  learning_rate: 2.0e-6
+  num_train_epochs: 1
+  warmup_ratio: 0.03
+  max_seq_length: 4096
+
+  # Logging
+  logging_steps: 10
+  save_steps: 500
+  report_to: wandb
+
+  # Memory optimization
+  gradient_checkpointing: true
+  use_liger_kernel: false
+  packing: false
+  bf16: true
+  seed: 42
+
+searcher:
+  name: single
+  metric: train_loss
+  smaller_is_better: true
+  max_length:
+    batches: 50000
+
+max_restarts: 1
+
+# Checkpoint configuration
+checkpoint_storage:
+  type: shared_fs
+  host_path: /pfss/mlde/workspaces/mlde_wsp_HessianLLM/tauchmann/repos/trl-eu/checkpoints
+  storage_path: determined-checkpoints
+
+# Scheduling
+scheduling_unit: 100
