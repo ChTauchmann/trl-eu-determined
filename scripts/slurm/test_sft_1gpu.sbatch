@@ -2,7 +2,7 @@
 #SBATCH --job-name=test-sft-eu
 #SBATCH --output=/mnt/vast/home/ct1002/logs/slurm/test_sft_eu_%j.out
 #SBATCH --error=/mnt/vast/home/ct1002/logs/slurm/test_sft_eu_%j.err
-#SBATCH --partition=general
+#SBATCH --partition=all
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=14
