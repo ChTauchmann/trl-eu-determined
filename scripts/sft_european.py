@@ -35,10 +35,10 @@ import torch
 from datasets import Dataset, load_dataset, load_from_disk
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# Add trl to path
-TRL_PATH = Path(__file__).parent.parent / "trl"
-if TRL_PATH.exists():
-    sys.path.insert(0, str(TRL_PATH))
+# Note: Using TRL from conda environment (open-r1), not the local submodule
+# TRL_PATH = Path(__file__).parent.parent / "trl"
+# if TRL_PATH.exists():
+#     sys.path.insert(0, str(TRL_PATH))
 
 from trl import SFTConfig, SFTTrainer
 
@@ -196,32 +196,38 @@ def main():
         attn_implementation="flash_attention_2",
     )
 
-    # Training config
-    training_args = SFTConfig(
-        output_dir=args.output_dir,
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        learning_rate=args.learning_rate,
-        num_train_epochs=args.num_train_epochs,
-        warmup_ratio=args.warmup_ratio,
-        lr_scheduler_type="cosine",
-        weight_decay=0.01,
-        logging_steps=args.logging_steps,
-        save_steps=args.save_steps,
-        save_total_limit=3,
-        gradient_checkpointing=args.gradient_checkpointing,
-        bf16=args.bf16,
-        seed=args.seed,
-        report_to=args.report_to,
-        # SFT specific
-        max_seq_length=args.max_seq_length if not use_pretokenized else None,
-        packing=args.packing if not use_pretokenized else False,
-        dataset_text_field=None if use_pretokenized else None,  # Use messages
-        # Memory optimization
-        use_liger_kernel=args.use_liger_kernel,
-        # For pre-tokenized, we skip tokenization
-        dataset_kwargs={"skip_prepare_dataset": True} if use_pretokenized else {},
-    )
+    # Training config - build kwargs dynamically
+    config_kwargs = {
+        "output_dir": args.output_dir,
+        "per_device_train_batch_size": args.per_device_train_batch_size,
+        "gradient_accumulation_steps": args.gradient_accumulation_steps,
+        "learning_rate": args.learning_rate,
+        "num_train_epochs": args.num_train_epochs,
+        "warmup_ratio": args.warmup_ratio,
+        "lr_scheduler_type": "cosine",
+        "weight_decay": 0.01,
+        "logging_steps": args.logging_steps,
+        "save_steps": args.save_steps,
+        "save_total_limit": 3,
+        "gradient_checkpointing": args.gradient_checkpointing,
+        "bf16": args.bf16,
+        "seed": args.seed,
+        "report_to": args.report_to,
+    }
+
+    # Add SFT-specific args only when not using pre-tokenized data
+    if not use_pretokenized:
+        config_kwargs["max_seq_length"] = args.max_seq_length
+        config_kwargs["packing"] = args.packing
+    else:
+        # For pre-tokenized data, skip dataset preparation
+        config_kwargs["dataset_kwargs"] = {"skip_prepare_dataset": True}
+
+    # Memory optimization
+    if args.use_liger_kernel:
+        config_kwargs["use_liger_kernel"] = True
+
+    training_args = SFTConfig(**config_kwargs)
 
     # Create trainer
     trainer = SFTTrainer(
