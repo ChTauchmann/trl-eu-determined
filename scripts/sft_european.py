@@ -187,6 +187,10 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # Set max length on tokenizer for TRL compatibility
+    if not use_pretokenized:
+        tokenizer.model_max_length = args.max_seq_length
+
     # Load model
     print(f"Loading model from {args.model_name_or_path}")
     model = AutoModelForCausalLM.from_pretrained(
@@ -217,7 +221,6 @@ def main():
 
     # Add SFT-specific args only when not using pre-tokenized data
     if not use_pretokenized:
-        config_kwargs["max_seq_length"] = args.max_seq_length
         config_kwargs["packing"] = args.packing
     else:
         # For pre-tokenized data, skip dataset preparation

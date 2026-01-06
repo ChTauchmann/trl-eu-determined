@@ -1,0 +1,17 @@
+description: TRL-EU test shell with 1 GPU
+
+resources:
+  slots: 1
+  resource_pool: 42_Compute
+
+environment:
+  environment_variables:
+    - HF_HOME=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface
+    - TRANSFORMERS_CACHE=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface/transformers
+    - HF_DATASETS_CACHE=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface/datasets
+    - WANDB_PROJECT=eu-sft
+
+bind_mounts:
+  - host_path: /pfss
+    container_path: /pfss
+    read_only: false
