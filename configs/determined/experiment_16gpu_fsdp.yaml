@@ -1,0 +1,50 @@
+name: eu-sft-16gpu-fsdp-apertus
+description: European SFT - Apertus 8B on 2 nodes (16 GPUs) with native PyTorch FSDP
+workspace: HessianLLM
+
+resources:
+  slots_per_trial: 16
+  resource_pool: 42_Compute
+
+environment:
+  image: determinedai/pytorch-cuda:latest
+  environment_variables:
+    - HF_HOME=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface
+    - TRANSFORMERS_CACHE=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface/transformers
+    - HF_DATASETS_CACHE=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/.cache/huggingface/datasets
+    - WANDB_PROJECT=eu-sft
+    - MODEL_NAME=swiss-ai/Apertus-8B-Instruct-2509
+    - DATASET_PATH=/tmp/test_sft_data.jsonl
+    - OUTPUT_DIR=/pfss/mlde/workspaces/mlde_wsp_HessianLLM/tauchmann/repos/trl-eu/outputs/apertus-8b-16gpu
+    - MAX_SAMPLES=500
+    - NUM_EPOCHS=1
+    - BATCH_SIZE=1
+    - GRAD_ACCUM=2
+    - REPORT_TO=wandb
+
+bind_mounts:
+  - host_path: /pfss
+    container_path: /pfss
+    read_only: false
+
+entrypoint:
+  - bash
+  - -c
+  - |
+    pip install datasets transformers accelerate trl flash-attn --no-build-isolation -q
+    python /pfss/mlde/workspaces/mlde_wsp_HessianLLM/tauchmann/repos/trl-eu/scripts/determined/create_test_data.py
+    python /pfss/mlde/workspaces/mlde_wsp_HessianLLM/tauchmann/repos/trl-eu/scripts/determined/train_fsdp_multinode.py
+
+searcher:
+  name: single
+  metric: train_loss
+  smaller_is_better: true
+  max_length:
+    batches: 10000
+
+max_restarts: 0
+
+checkpoint_storage:
+  type: shared_fs
+  host_path: /pfss/mlde/workspaces/mlde_wsp_HessianLLM/tauchmann/repos/trl-eu/checkpoints
+  storage_path: determined-checkpoints
